@@ -3,8 +3,6 @@
 #include <queue>
 #include <vector>
 
-const int kInf = 1e9;
-
 class FordFalkerson {
 public:
     FordFalkerson(const std::vector<std::vector<std::pair<int, int>>>& graph) {
@@ -23,17 +21,17 @@ public:
         int num = 0;
 
         while (true) {
-            auto [path, min_cap] = FindPositivePath(source, target);
-            if (min_cap == -1) {
+            auto [path, exists] = FindOnesPath(source, target);
+            if (!exists) {
                 break;
             }
 
-            num += min_cap;
+            num += 1;
             for (int i = 1; i < static_cast<int>(path.size()); ++i) {
                 int prev = path[i - 1];
                 int curr = path[i];
-                capacity_[prev][curr] -= min_cap;
-                capacity_[curr][prev] -= -min_cap;
+                capacity_[prev][curr] = 0;
+                capacity_[curr][prev] = 1;
             }
         }
 
@@ -53,10 +51,9 @@ private:
     std::vector<std::vector<int>> capacity_;
     size_t size_;
 
-    std::pair<std::vector<int>, int> FindPositivePath(int source,
+    std::pair<std::vector<int>, bool> FindOnesPath(int source,
                                                       int target) const {
-        std::vector<std::pair<int, int>> prev(graph_.size(), {-1, -1});
-        prev[source] = {0, 0};
+        std::vector<int> prev(graph_.size(), -1);
         std::queue<int> queue;
         queue.push(source);
 
@@ -66,11 +63,11 @@ private:
 
             for (const auto& neighbour : graph_[vertex]) {
                 int cap = capacity_[vertex][neighbour];
-                if (prev[neighbour].first != -1 || cap == 0) {
+                if (prev[neighbour] != -1 || cap == 0) {
                     continue;
                 }
 
-                prev[neighbour] = {vertex, cap};
+                prev[neighbour] = vertex;
                 queue.push(neighbour);
 
                 if (neighbour == target) {
@@ -79,25 +76,21 @@ private:
             }
         }
 
-        if (prev[target].first == -1) {
-            return {{}, -1};
+        if (prev[target]== -1) {
+            return {{}, false};
         }
 
         std::vector<int> path;
         path.push_back(target);
-        int min_cap = kInf;
         int cur = target;
         while (cur != source) {
-            const auto [previous, cap] = prev[cur];
+            int previous = prev[cur];
             path.push_back(previous);
-            if (cap < min_cap) {
-                min_cap = cap;
-            }
             cur = previous;
         }
         std::reverse(path.begin(), path.end());
 
-        return {path, min_cap};
+        return {path, true};
     }
 };
 
@@ -119,8 +112,7 @@ int main() {
         graph[0].push_back({i, 1});
         graph[i].push_back({0, 0});
     }
-    for (int i = 0; i < edges.size(); ++i) {
-        auto& [v1, v2] = edges[i];
+    for (const auto& [v1, v2] : edges) {
         graph[v1].push_back({left + v2, 1});
         graph[left + v2].push_back({v1, 0});
     }
